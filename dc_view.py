@@ -3,11 +3,13 @@
 """
 디시인사이드 여러 갤러리의 인기글(개념글)을 파싱해서 텔레그램으로 보내는 스크립트.
 
+- 한 번 순회(수집 → 전송)가 끝나면 정상 종료합니다. (반복은 GitHub Actions schedule 이 담당)
 - 여러 갤러리 지원 (config.json 의 galleries 에 URL 을 그대로 붙여넣기)
 - 각 갤러리 N페이지(기본 3) 파싱, 중복 글은 seen.json 으로 영구 필터링
 - 글 구조: 제목 + 내용  ->  사진/영상(앨범 묶음)  ->  원문 링크
 - 이미지는 핫링크 차단 때문에 서버에서 내려받아 '파일로 직접 업로드' (링크 미리보기 X)
 - GIF(움직이는 것)는 animation, mp4 는 video 로 전송, 깨질 만한 이미지는 자동 변환/문서 전송
+- 환경변수 MAX_RUN_MINUTES 를 주면 그 시간이 지난 뒤에는 새 글을 시작하지 않고 종료합니다.
 """
 import argparse
 import html
@@ -21,7 +23,6 @@ import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import re
-import socket
 import sys
 import time
 from urllib.parse import urlparse, parse_qs, urlencode, urljoin
@@ -34,8 +35,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = 200_000_000
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(BASE_DIR, "new_config.json")
-STATE_PATH = os.path.join(BASE_DIR, "new_seen.json")
+CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+STATE_PATH = os.path.join(BASE_DIR, "seen.json")
 
 DEFAULT_CONFIG = {
     "token": "",
@@ -44,12 +45,11 @@ DEFAULT_CONFIG = {
         "https://gall.dcinside.com/mgallery/board/lists/?id=stockus&exception_mode=recommend",
         "https://gall.dcinside.com/mgallery/board/lists/?id=krstock&exception_mode=recommend",
         "https://gall.dcinside.com/mgallery/board/lists/?id=tenbagger&exception_mode=recommend",
-        "https://gall.dcinside.com/mgallery/board/lists/?id=nikkei&exception_mode=recommend"
+        "https://gall.dcinside.com/mgallery/board/lists/?id=nikkei&exception_mode=recommend",
     ],
     "pages": 3,
-    "interval_minutes": 10,  # 한 번 순회가 끝난 뒤 이 시간(분)만큼 쉬고 다시 반복
-    "post_delay_min": 5,  # 글 하나 전송 완료 후 최소 대기(초)
-    "post_delay_max": 10,  # 글 하나 전송 완료 후 최대 대기(초)
+    "post_delay_min": 2,  # 글 하나 전송 완료 후 최소 대기(초)
+    "post_delay_max": 5,  # 글 하나 전송 완료 후 최대 대기(초)
     "max_media_per_post": 30,
     "parallel_posts": 2,  # 전송 중에 미리 다운로드해 둘 글 개수
     "parallel_media": 4,  # 글 하나 안에서 동시에 받을 미디어 개수
@@ -66,6 +66,7 @@ UA = (
 TG_PHOTO_MAX = 10 * 1024 * 1024  # sendPhoto 10MB
 TG_FILE_MAX = 50 * 1024 * 1024  # 봇 API 업로드 50MB
 MEDIA_FETCH_MAX = 120 * 1024 * 1024
+POST_BUILD_TIMEOUT = 300  # 글 하나 다운로드/변환 최대 대기(초)
 
 
 def log(*a):
@@ -310,7 +311,8 @@ class DC:
         last = None
         for i in range(retries):
             try:
-                r = self.s.get(url, headers=h, timeout=30, stream=stream)
+                # (연결 timeout, 읽기 timeout): 응답이 멈춰도 무한 대기하지 않게
+                r = self.s.get(url, headers=h, timeout=(10, 30), stream=stream)
                 if r.status_code == 200:
                     return r
                 last = Exception(f"HTTP {r.status_code}")
@@ -823,8 +825,20 @@ def collect_gallery(dc, url, pages):
     return base, gid, gname, found
 
 
-def run_once(cfg, tg, dc, state, mark_only=False):
+def run_once(cfg, tg, dc, state, mark_only=False, deadline=None):
+    """모든 갤러리를 한 번 순회하고 끝낸다. deadline(시각)이 지나면 남은 글은 다음 실행으로 넘긴다."""
+
+    def time_up():
+        return deadline is not None and time.time() > deadline
+
+    seen_urls = set()
     for url in cfg["galleries"]:
+        if url in seen_urls:  # config 에 같은 URL 이 중복돼 있어도 한 번만 처리
+            continue
+        seen_urls.add(url)
+        if time_up():
+            log("시간 상한 도달 → 남은 갤러리는 다음 실행에서 처리")
+            break
         try:
             base, gid, gname, posts = collect_gallery(dc, url, int(cfg["pages"]))
         except Exception as e:
@@ -850,9 +864,12 @@ def run_once(cfg, tg, dc, state, mark_only=False):
             for i in range(window):  # 앞의 몇 개를 미리 다운로드 시작
                 submit(i)
             for i, p in enumerate(new):
+                if time_up():
+                    log("시간 상한 도달 → 남은 글은 다음 실행에서 처리")
+                    break
                 key = f"{gid}:{p['no']}"
                 try:
-                    post = futs[i].result()  # 이 글 다운로드 끝날 때까지만 대기
+                    post = futs[i].result(timeout=POST_BUILD_TIMEOUT)  # 이 글 다운로드 끝날 때까지만 대기
                     submit(i + window)  # 다음 글은 이미 병렬로 받는 중
                     send_post(tg, cfg, post)
                     state["seen"][key] = int(time.time())
@@ -862,7 +879,7 @@ def run_once(cfg, tg, dc, state, mark_only=False):
                     submit(i + window)
                     n = state["fail"].get(key, 0) + 1
                     state["fail"][key] = n
-                    log(f"  글 {p['no']} 실패({n}/3): {e}")
+                    log(f"  글 {p['no']} 실패({n}/3): {e!r}")
                     if n >= 3:
                         state["seen"][key] = int(time.time())
                 finally:
@@ -871,26 +888,17 @@ def run_once(cfg, tg, dc, state, mark_only=False):
                 wait = random.uniform(float(cfg["post_delay_min"]), float(cfg["post_delay_max"]))
                 log(f"  {wait:.0f}초 대기 (이 동안 다음 글 다운로드 진행)")
                 time.sleep(wait)
+            # 남은 미리받기 작업은 취소 (이미 도는 것만 끝나길 기다림)
+            for f in futs.values():
+                f.cancel()
         save_state(state)
 
 
-# def acquire_single_instance():
-#     """같은 폴더에서 두 개가 동시에 돌면 중복 전송되므로 로컬 포트로 중복 실행 차단."""
-#     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#     try:
-#         sock.bind(("127.0.0.1", 47653))
-#     except OSError:
-#         raise SystemExit("이미 실행 중입니다. (중복 실행 방지)")
-#     return sock  # 프로세스가 살아있는 동안 참조 유지
-
-
 def main():
-    ap = argparse.ArgumentParser(description="DCInside → Telegram")
+    ap = argparse.ArgumentParser(description="DCInside → Telegram (1회 실행 후 종료)")
     ap.add_argument("--mark-seen", action="store_true", help="현재 보이는 글을 전송 없이 '본 글'로만 표시(첫 실행 폭주 방지)")
-    ap.add_argument("--once", action="store_true", help="반복하지 않고 1회만 실행")
     args = ap.parse_args()
 
-    # lock = acquire_single_instance()  # noqa: F841
     cfg = load_config()
     if not cfg["token"] or "여기에" in cfg["token"]:
         raise SystemExit(f"config.json 의 token 을 입력하세요: {CONFIG_PATH}")
@@ -903,21 +911,21 @@ def main():
         log("⚠ ffmpeg 없음 → GIF/영상 보정을 못 합니다. 'pip install imageio-ffmpeg' 로 설치하면 GIF 깨짐이 크게 줄어듭니다")
     tg = Telegram(cfg["token"], cfg["chat_id"], cfg["disable_notification"])
     dc, state = DC(), load_state()
-    interval = int(cfg["interval_minutes"]) or 10
 
-    while True:
-        try:
-            cfg = load_config()  # 재시작 없이 갤러리/설정 변경 반영
-            run_once(cfg, tg, dc, state, mark_only=args.mark_seen)
-        except KeyboardInterrupt:
-            raise
-        except Exception as e:  # 어떤 오류가 나도 프로세스가 죽지 않게
-            log(f"순회 중 오류: {e!r} (다음 주기에 재시도)")
-        if args.mark_seen or args.once:
-            break
-        interval = int(cfg.get("interval_minutes") or 10)
-        log(f"순회 완료. {interval}분 후 다시 실행")
-        time.sleep(interval * 60)
+    # MAX_RUN_MINUTES 환경변수가 있으면 그 시간 안에서만 새 글을 처리 (없으면 제한 없음)
+    max_min = float(os.environ.get("MAX_RUN_MINUTES") or 0)
+    deadline = time.time() + max_min * 60 if max_min > 0 else None
+
+    try:
+        run_once(cfg, tg, dc, state, mark_only=args.mark_seen, deadline=deadline)
+    except Exception as e:
+        save_state(state)
+        log(f"순회 중 오류: {e!r}")
+        sys.exit(1)
+
+    save_state(state)
+    log("순회 완료. 종료")
+    sys.exit(0)
 
 
 if __name__ == "__main__":
