@@ -5,32 +5,46 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-concurrency: telegram-bots
 jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: dc
+            script: dc_view.py
+            config: new_config.json
+            seen: new_seen.json
+            token_secret: TG_TOKEN_DC_2
+          - name: dc_v2
+            script: test.py
+            config: config.json
+            seen: seen.json
+            token_secret: TG_TOKEN_DC
+    concurrency:
+      group: bots-${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install requests beautifulsoup4 pillow curl_cffi imageio-ffmpeg
-      - name: 빈 config 생성 (나머지는 코드 기본값 + 환경변수 사용)
-        run: |
-          echo '{}' > config.json
-          echo '{}' > new_config.json
+      - name: 빈 config 생성
+        run: echo '{}' > ${{ matrix.config }}
       - name: 실행
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TG_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TG_CHAT }}
-        run: |
-          python dc_view.py --once &
-          python test.py --once &
-          wait
+          TELEGRAM_TOKEN: ${{ secrets[matrix.token_secret] }}
+        run: python ${{ matrix.script }} --once
       - name: 본 글 기록 커밋
+        if: always()
         run: |
           git config user.name bot
           git config user.email bot@users.noreply.github.com
-          git add seen.json new_seen.json
-          git commit -m "state" || exit 0
-          git pull --rebase && git push
+          git add ${{ matrix.seen }}
+          git commit -m "state ${{ matrix.name }}" || exit 0
+          for i in 1 2 3; do
+            git pull --rebase && git push && exit 0
+            sleep 3
+          done
+          exit 1
