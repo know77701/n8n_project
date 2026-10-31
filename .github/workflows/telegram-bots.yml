@@ -1,7 +1,8 @@
 name: telegram-bots
 on:
   schedule:
-    - cron: "*/20 * * * *"
+    - cron: "3,23,43 * * * *"
+    - cron: "11,31,51 * * * *"
   workflow_dispatch:
 permissions:
   contents: write
