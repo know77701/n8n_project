@@ -19,17 +19,29 @@ jobs:
             seen: new_seen.json
             seed: ""
             token_secret: TG_TOKEN_DC_2
-          - name: dc_v2
+          - name: dcccc
             script: test.py
             config: config.json
             seen: seen.json
             seed: ""
             token_secret: TG_TOKEN_DC
-          - name: dc_v3
+          - name: dc_v2
             script: dc_view_2.py
+            config: new_config_v2.json
+            seen: new_seen_v2.json
+            seed: new_seen2.json
+            token_secret: TG_TOKEN_DC_2
+          - name: dc_v3
+            script: dc_view_3.py
             config: new_config_v3.json
             seen: new_seen_v3.json
-            seed: new_seen.json
+            seed: new_seen3.json
+            token_secret: TG_TOKEN_DC_2
+          - name: dc_v4
+            script: dc_view_4.py
+            config: new_config_v4.json
+            seen: new_seen_v4.json
+            seed: new_seen4.json
             token_secret: TG_TOKEN_DC_2
     concurrency:
       group: bots-${{ matrix.name }}
