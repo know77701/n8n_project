@@ -42,9 +42,9 @@ DEFAULT_CONFIG = {
     "token": "",
     "chat_id": "",  # 비워두면 봇에게 아무 메시지나 보낸 뒤 실행 시 자동 감지
     "galleries": [
-        "https://gall.dcinside.com/mgallery/board/lists/?id=duwk&exception_mode=recommend",
-        "https://gall.dcinside.com/mgallery/board/lists/?id=boobs&exception_mode=recommend",
-        "https://gall.dcinside.com/mgallery/board/lists/?id=pelvis&exception_mode=recommend",
+        "https://gall.dcinside.com/mgallery/board/lists/?id=nasdaq&exception_mode=recommend",
+        "https://gall.dcinside.com/mgallery/board/lists/?id=kospi&exception_mode=recommend",
+        "https://gall.dcinside.com/mgallery/board/lists/?id=chartanalysis&exception_mode=recommend",
         "https://gall.dcinside.com/board/lists?id=dcbest"
 
     ],
