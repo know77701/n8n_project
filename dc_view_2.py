@@ -897,8 +897,8 @@ def run_once(cfg, tg, dc, state, mark_only=False, deadline=None):
 
 def main():
     ap = argparse.ArgumentParser(description="DCInside → Telegram (1회 실행 후 종료)")
-    ap.add_argument("--mark-seen", action="store_true", help="현재 보이는 글을 전송 없이 '본 글'로만 표시(첫 실행 폭주 방지)")
     args = ap.parse_args()
+    ap.add_argument("--mark-seen", action="store_true", help="현재 보이는 글을 전송 없이 '본 글'로만 표시(첫 실행 폭주 방지)")
     ap.add_argument("--once", action="store_true", help="호환용(무시됨, 항상 1회 실행)")
     ap.add_argument("--max-minutes", type=float, default=0, help="이 시간(분)이 지나면 새 글을 시작하지 않고 종료(0=제한 없음)")
 
