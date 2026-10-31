@@ -1,0 +1,36 @@
+name: telegram-bots
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: telegram-bots
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install requests beautifulsoup4 pillow curl_cffi imageio-ffmpeg
+      - name: 빈 config 생성 (나머지는 코드 기본값 + 환경변수 사용)
+        run: |
+          echo '{}' > config.json
+          echo '{}' > new_config.json
+      - name: 실행
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TG_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TG_CHAT }}
+        run: |
+          python dc_view.py --once &
+          python test.py --once &
+          wait
+      - name: 본 글 기록 커밋
+        run: |
+          git config user.name bot
+          git config user.email bot@users.noreply.github.com
+          git add seen.json new_seen.json
+          git commit -m "state" || exit 0
+          git pull --rebase && git push
