@@ -35,15 +35,15 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = 200_000_000
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(BASE_DIR, os.environ.get("CONFIG_PATH") or "new_config.json")
-STATE_PATH = os.path.join(BASE_DIR, os.environ.get("STATE_PATH") or "new_seen.json")
+CONFIG_PATH = os.path.join(BASE_DIR, os.environ.get("CONFIG_PATH") or "new_config2.json")
+STATE_PATH = os.path.join(BASE_DIR, os.environ.get("STATE_PATH") or "new_seen2.json")
 
 DEFAULT_CONFIG = {
     "token": "",
     "chat_id": "",  # 비워두면 봇에게 아무 메시지나 보낸 뒤 실행 시 자동 감지
     "galleries": [
-
-
+        "https://gall.dcinside.com/mgallery/board/lists/?id=tenbagger&exception_mode=recommend",
+        "https://gall.dcinside.com/mgallery/board/lists/?id=nikkei&exception_mode=recommend",
     ],
     "pages": 3,
     "post_delay_min": 2,  # 글 하나 전송 완료 후 최소 대기(초)
