@@ -1,14 +1,14 @@
 name: telegram-bots
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/20 * * * *"
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -23,6 +23,11 @@ jobs:
             config: config.json
             seen: seen.json
             token_secret: TG_TOKEN_DC
+          - name: dc_v3
+            script: dc_view_v2.py
+            config: new_config.json
+            seen: new_seen.json
+            token_secret: TG_TOKEN_DC_2
     concurrency:
       group: bots-${{ matrix.name }}
     steps:
@@ -33,11 +38,15 @@ jobs:
       - name: 빈 config 생성
         run: echo '{}' > ${{ matrix.config }}
       - name: 실행
+        timeout-minutes: 20
         env:
           TELEGRAM_TOKEN: ${{ secrets[matrix.token_secret] }}
+          CONFIG_PATH: ${{ matrix.config }}
+          STATE_PATH: ${{ matrix.seen }}
+          MAX_RUN_MINUTES: "15"
         run: python ${{ matrix.script }} --once
       - name: 본 글 기록 커밋
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           git config user.name bot
           git config user.email bot@users.noreply.github.com
