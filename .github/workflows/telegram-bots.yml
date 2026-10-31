@@ -17,26 +17,40 @@ jobs:
             script: dc_view.py
             config: new_config.json
             seen: new_seen.json
+            seed: ""
             token_secret: TG_TOKEN_DC_2
           - name: dc_v2
             script: test.py
             config: config.json
             seen: seen.json
+            seed: ""
             token_secret: TG_TOKEN_DC
           - name: dc_v3
             script: dc_view_2.py
-            config: new_config.json
-            seen: new_seen.json
+            config: new_config_v3.json
+            seen: new_seen_v3.json
+            seed: new_seen.json
             token_secret: TG_TOKEN_DC_2
     concurrency:
       group: bots-${{ matrix.name }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install requests beautifulsoup4 pillow curl_cffi imageio-ffmpeg
       - name: 빈 config 생성
         run: echo '{}' > ${{ matrix.config }}
+      - name: 상태 파일 초기값 복사
+        env:
+          SEED: ${{ matrix.seed }}
+          SEEN: ${{ matrix.seen }}
+        run: |
+          if [ -n "$SEED" ] && [ ! -f "$SEEN" ] && [ -f "$SEED" ]; then
+            cp "$SEED" "$SEEN"
+          fi
       - name: 실행
         timeout-minutes: 20
         env:
@@ -52,8 +66,11 @@ jobs:
           git config user.email bot@users.noreply.github.com
           git add ${{ matrix.seen }}
           git commit -m "state ${{ matrix.name }}" || exit 0
-          for i in 1 2 3; do
-            git pull --rebase && git push && exit 0
-            sleep 3
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$GITHUB_REF_NAME" && git push origin HEAD:"$GITHUB_REF_NAME"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 3))
           done
           exit 1
