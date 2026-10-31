@@ -33,8 +33,11 @@ jobs:
             token_secret: TG_TOKEN_DC_2
     concurrency:
       group: bots-${{ matrix.name }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install requests beautifulsoup4 pillow curl_cffi imageio-ffmpeg
