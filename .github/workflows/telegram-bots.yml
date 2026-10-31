@@ -24,7 +24,7 @@ jobs:
             seen: seen.json
             token_secret: TG_TOKEN_DC
           - name: dc_v3
-            script: dc_view_v2.py
+            script: dc_view_2.py
             config: new_config.json
             seen: new_seen.json
             token_secret: TG_TOKEN_DC_2
