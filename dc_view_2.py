@@ -35,8 +35,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = 200_000_000
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(BASE_DIR, "new_config.json")
-STATE_PATH = os.path.join(BASE_DIR, "new_seen.json")
+CONFIG_PATH = os.path.join(BASE_DIR, os.environ.get("CONFIG_PATH") or "new_config.json")
+STATE_PATH = os.path.join(BASE_DIR, os.environ.get("STATE_PATH") or "new_seen.json")
 
 DEFAULT_CONFIG = {
     "token": "",
