@@ -46,6 +46,10 @@ DEFAULT_CONFIG = {
         "https://gall.dcinside.com/mgallery/board/lists/?id=krstock&exception_mode=recommend",
         "https://gall.dcinside.com/mgallery/board/lists/?id=tenbagger&exception_mode=recommend",
         "https://gall.dcinside.com/mgallery/board/lists/?id=nikkei&exception_mode=recommend",
+        "https://gall.dcinside.com/mgallery/board/lists/?id=nasdaq&exception_mode=recommend",
+        "https://gall.dcinside.com/mgallery/board/lists/?id=kospi&exception_mode=recommend",
+        "https://gall.dcinside.com/mgallery/board/lists/?id=chartanalysis&exception_mode=recommend",
+        "https://gall.dcinside.com/board/lists?id=dcbest"
     ],
     "pages": 3,
     "post_delay_min": 2,  # 글 하나 전송 완료 후 최소 대기(초)
