@@ -38,7 +38,7 @@ CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 STATE_PATH = os.path.join(BASE_DIR, "seen.json")
 
 DEFAULT_CONFIG = {
-    "token": "8326085062:AAEJgV_Gu46LPSvN9HupvPQal-zXuF-aqYI",
+    "token": "",
     "chat_id": "",  # 비워두면 봇에게 아무 메시지나 보낸 뒤 실행 시 자동 감지
     "galleries": [
         "https://gall.dcinside.com/mgallery/board/lists/?id=duwk&exception_mode=recommend",
