@@ -38,6 +38,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "new_config.json")
 STATE_PATH = os.path.join(BASE_DIR, "new_seen.json")
 
+
 DEFAULT_CONFIG = {
     "token": "",
     "chat_id": "",  # 비워두면 봇에게 아무 메시지나 보낸 뒤 실행 시 자동 감지
