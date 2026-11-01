@@ -34,7 +34,6 @@ DEFAULT_CONFIG = {
         "https://gall.dcinside.com/mgallery/board/lists/?id=duwk&exception_mode=recommend",
         "https://gall.dcinside.com/mgallery/board/lists/?id=boobs&exception_mode=recommend",
         "https://gall.dcinside.com/mgallery/board/lists/?id=pelvis&exception_mode=recommend",
-        "https://gall.dcinside.com/mgallery/board/lists/?id=pelvis&exception_mode=recommend"
     ],
     "pages": 3,
     "post_delay_min": 2,  # 글 하나 전송 완료 후 최소 대기(초)
