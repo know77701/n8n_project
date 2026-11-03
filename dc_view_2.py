@@ -44,6 +44,7 @@ DEFAULT_CONFIG = {
     "galleries": [
         "https://gall.dcinside.com/mgallery/board/lists/?id=tenbagger&exception_mode=recommend",
         "https://gall.dcinside.com/mgallery/board/lists/?id=nikkei&exception_mode=recommend",
+        "https://gall.dcinside.com/board/lists/?id=neostock&exception_mode=recommend"
     ],
     "pages": 3,
     "post_delay_min": 2,  # 글 하나 전송 완료 후 최소 대기(초)
